@@ -74,6 +74,7 @@ def train_model(input_dir_queue):
         # Two Loss Functions for discriminator
         d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=Dx, labels=tf.ones_like(Dx)))
         d_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=Dg, labels=tf.zeros_like(Dg)))
+        d_loss = d_loss_fake + d_loss_real
 
         # Loss function for generator
         g_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=Dg, labels=tf.ones_like(Dg)))
@@ -83,11 +84,10 @@ def train_model(input_dir_queue):
         g_vars = tf.trainable_variables(scope='generator')
 
         # Train the discriminator
-        d_trainer_fake = tf.train.AdamOptimizer(0.0003).minimize(d_loss_fake, var_list=d_vars)
-        d_trainer_real = tf.train.AdamOptimizer(0.0003).minimize(d_loss_real, var_list=d_vars)
+        d_trainer = tf.train.AdamOptimizer(learning_rate).minimize(d_loss, var_list=d_vars)
 
         # Train the generator
-        g_trainer = tf.train.AdamOptimizer(0.0001).minimize(g_loss, var_list=g_vars)
+        g_trainer = tf.train.AdamOptimizer(learning_rate).minimize(g_loss, var_list=g_vars)
 
         # evaluation score
         pixel_error = tf.losses.mean_squared_error(labels=original_img, predictions=Gz)

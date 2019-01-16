@@ -171,7 +171,6 @@ def generator(img):
             ###
             for i in range(0, 2):
                 out = residual_block_transpose(out, 64, i == 0)
-
             ###
             for i in range(0, 2):
                 out = residual_block_transpose(out, 64)
