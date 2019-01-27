@@ -95,34 +95,36 @@ def residual_block_transpose(x, filter_size, up_sample=None):
     return out
 
 
-def discriminator(img, reuse_variable=None):
+def discriminator(img1, img2, reuse_variable=None):
+    def siamese_conv(img, reuse=False):
+        with tf.variable_scope('siamese_network', reuse=reuse) as scope:
+            # ResNet
+            out = tf.layers.conv2d(
+                img,
+                filters=64,
+                kernel_size=[7, 7],
+                strides=(2, 2),
+                padding='same'
+            )
+            out = tf.layers.batch_normalization(out)
+            out = tf.nn.leaky_relu(out)
+
+            ###
+            for i in range(0, 1):
+                out = residual_block(out, 64)
+            ###
+            for i in range(0, 2):
+                out = residual_block(out, 128, i == 0)
+
+            # global average pooling
+            out = tf.reduce_mean(out, axis=[1, 2])
+            return out
+
     with tf.variable_scope('discriminator', reuse=reuse_variable) as scope:
-        # ResNet
-        out = tf.layers.conv2d(
-            img,
-            filters=64,
-            kernel_size=[7, 7],
-            strides=(2, 2),
-            padding='same'
-        )
-        out = tf.layers.batch_normalization(out)
-        out = tf.nn.leaky_relu(out)
+        output1 = siamese_conv(img1)
+        output2 = siamese_conv(img2, reuse=True)
 
-        ###
-        for i in range(0, 2):
-            out = residual_block(out, 64)
-        ###
-        for i in range(0, 2):
-            out = residual_block(out, 128, i == 0)
-        ###
-        for i in range(0, 2):
-            out = residual_block(out, 256, i == 0)
-        ###
-        for i in range(0, 2):
-            out = residual_block(out, 512, i == 0)
-
-        # global average pooling
-        out = tf.reduce_mean(out, axis=[1, 2])
+        out = tf.concat([output1, output2], axis=3)
 
         out_flat = tf.layers.flatten(out)
         out_flat = tf.layers.dense(out_flat, 1024, activation=tf.nn.leaky_relu)

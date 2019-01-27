@@ -11,7 +11,7 @@ from model import generator, discriminator
 DATASET_PATH = 'dataset/image/anime/'
 batch_size = 1
 images_in_memory = 32
-learning_rate = 0.0001
+learning_rate = 0.00001
 
 
 def expand_dims(array):
@@ -67,14 +67,14 @@ def train_model(input_dir_queue):
 
         Gz = generator(downscaled_img)
 
-        Dx = discriminator(original_img)
+        Dx = discriminator(original_img, original_img)
 
-        Dg = discriminator(Gz, reuse_variable=True)
+        Dg = discriminator(Gz, original_img, reuse_variable=True)
 
         # Two Loss Functions for discriminator
         d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=Dx, labels=tf.ones_like(Dx)))
         d_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=Dg, labels=tf.zeros_like(Dg)))
-        d_loss = d_loss_fake + d_loss_real
+        d_loss = d_loss_real + d_loss_fake
 
         # Loss function for generator
         g_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=Dg, labels=tf.ones_like(Dg)))
@@ -89,9 +89,6 @@ def train_model(input_dir_queue):
         # Train the generator
         g_trainer = tf.train.AdamOptimizer(learning_rate).minimize(g_loss, var_list=g_vars)
 
-        # evaluation score
-        pixel_error = tf.losses.mean_squared_error(labels=original_img, predictions=Gz)
-
         # From this point forward, reuse variables
         tf.get_variable_scope().reuse_variables()
 
@@ -99,72 +96,65 @@ def train_model(input_dir_queue):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
 
-    #
-    pixel_errors = []
-
     with tf.Session(graph=graph, config=config) as sess:
         saver = tf.train.Saver()
         tf.global_variables_initializer().run()
+        # pre-train discriminator
+        for step in range(10):
+            # random select 32 images
+            selected_image_dirs = np.random.choice(input_dir_queue, images_in_memory, replace=False)
+            images, downscaled_images = preprocess_dataset(selected_image_dirs)
+            dataset_size = len(images)
+            if dataset_size == 0:
+                continue
 
-        ## pre-train discrimiator
-        # random select 32 images
-        selected_image_dirs = np.random.choice(input_dir_queue, images_in_memory, replace=False)
-        images, downscaled_images = preprocess_dataset(selected_image_dirs)
-        dataset_size = len(images)
+            print("Training discriminator")
+            for i in range(500):
+                offset = (i * batch_size) % (dataset_size - batch_size)
+                feet_dict = {'original_img:0': expand_dims(images[offset]),
+                             'downscaled_img:0': expand_dims(downscaled_images[offset])}
+                _, dLoss = sess.run([d_trainer, d_loss], feed_dict=feet_dict)
 
-        print("Training discriminator")
-        for i in range(1000):
-            offset = (i * batch_size) % (dataset_size - batch_size)
-            feet_dict = {'original_img:0': expand_dims(images[offset:offset + batch_size]),
-                         'downscaled_img:0': expand_dims(downscaled_images[offset:offset + batch_size])}
-            _, __, dLossReal, dLossFake = sess.run([d_trainer_real, d_trainer_fake, d_loss_real, d_loss_fake],
-                                                   feed_dict=feet_dict)
+            # saving check point
+            saver.save(sess, "./tf_model/model.ckpt")
 
-        # saving check point
-        saver.save(sess, "./tf_model")
-
+        # stat training GAN
         for step in range(1000):
             # load 32 images into memory
             print("Load batch of images into memory")
-            queue_offset = (step * images_in_memory) % (len(input_dir_queue) - images_in_memory)
-            selected_image_dirs = input_dir_queue[queue_offset:queue_offset + images_in_memory]
+            selected_image_dirs = np.random.choice(input_dir_queue, images_in_memory, replace=False)
             images, downscaled_images = preprocess_dataset(selected_image_dirs)
             dataset_size = len(images)
+            if dataset_size == 0:
+                continue
 
             # Train generator and discriminator together
             print("Start training")
             for i in range(300):
                 offset = (i * batch_size) % (dataset_size - batch_size)
-                feet_dict = {'original_img:0': expand_dims(images[offset:offset + batch_size]),
-                             'downscaled_img:0': expand_dims(downscaled_images[offset:offset + batch_size])}
+                feet_dict = {'original_img:0': expand_dims(images[offset]),
+                             'downscaled_img:0': expand_dims(downscaled_images[offset])}
 
                 # Train discriminator on both real and fake images
-                _, __, dLossReal, dLossFake = sess.run([d_trainer_real, d_trainer_fake, d_loss_real, d_loss_fake],
-                                                       feed_dict=feet_dict)
+                _, dLoss = sess.run([d_trainer, d_loss], feed_dict=feet_dict)
 
                 # Train generator
-                _, generated_img, error = sess.run([g_trainer, Gz, pixel_error], feed_dict={
+                _, generated_img = sess.run([g_trainer, Gz], feed_dict={
                     'downscaled_img:0': np.expand_dims(downscaled_images[i % dataset_size], axis=0)})
 
-                error = error[0]
-
-                if i % 60 == 0:
+                if i % 50 == 0:
+                    img = (generated_img[0] + 1) * 127.5
+                    img = np.array(img).astype('int')
+                    plt.imshow(img)
+                    plt.show()
+                    plt.clf()
                     print("Period: ", i)
-                    print("Pixel error: ", error)
-                    pixel_errors.append(error)
 
                     # saving check point
-                    saver.save(sess, "./tf_model")
-
-        plt.ylabel("Error")
-        plt.xlabel("Periods")
-        plt.title("Error vs. Periods")
-        plt.plot(pixel_errors, label="training")
-        plt.legend()
-        plt.show()
+                    saver.save(sess, "./tf_model/model.ckpt")
 
         # save model
-        saver.save(sess, './tf_model', global_step=1)
+        saver.save(sess, './tf_model/model.ckpt', global_step=1)
         sess.close()
 
 
