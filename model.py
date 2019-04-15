@@ -11,15 +11,15 @@ class Generator(tf.keras.Model):
         x = Conv2D(filters=64, kernel_size=9, padding='same')(x)
         x = LeakyReLU()(x)
 
-        x = self.residual_block(x, filters=128, strides=2)
-        x = self.residual_block(x, filters=256)
+        x = self.conv2d(x, filters=64, kernel_size=7, strides=2)
+        x = self.conv2d(x, filters=128, kernel_size=7, strides=2)
+        x = self.conv2d(x, filters=256, kernel_size=7, strides=2)
 
         ## decoder
-        x = self.residual_block(x, filters=256)
-        x = tf.nn.depth_to_space(x, 2)
-        x = self.residual_block(x, filters=128)
-        x = tf.nn.depth_to_space(x, 2)
-        x = self.residual_block(x, filters=64)
+        x = self.up_sampling_block(x, filters=256, kernel_size=7)
+        x = self.up_sampling_block(x, filters=256, kernel_size=7)
+        x = self.up_sampling_block(x, filters=128, kernel_size=7)
+        x = self.up_sampling_block(x, filters=64, kernel_size=7)
 
         ## output conv
         output_layer = Conv2D(filters=3, kernel_size=9, padding='same', activation='tanh')(x)
@@ -30,11 +30,18 @@ class Generator(tf.keras.Model):
         x = LeakyReLU()(x)
         return x
 
+    def up_sampling_block(self, input, filters, kernel_size):
+        x = Conv2D(filters=filters, kernel_size=kernel_size, strides=1, padding='same')(input)
+        x = tf.nn.depth_to_space(x, 2)
+        x = LeakyReLU()(x)
+        return x
+
+    # alt
     def residual_block(self, input, filters, strides=1):
         residual = self.conv2d(input, filters=filters, kernel_size=1, strides=strides)
-        x = self.conv2d(input, filters=filters, kernel_size=3, strides=strides)
+        x = self.conv2d(input, filters=filters, kernel_size=7, strides=strides)
 
-        x = Conv2D(filters=filters, kernel_size=3, padding='same')(x)
+        x = Conv2D(filters=filters, kernel_size=7, padding='same')(x)
         x += residual
         x = LeakyReLU()(x)
 
