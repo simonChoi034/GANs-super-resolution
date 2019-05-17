@@ -16,6 +16,8 @@ def expand_dims(array):
 
 def get_file_list(dataset_path):
     input_dir_queue = []
+    input_dir_queue.extend(glob(dataset_path + '/*.jpg'))
+    input_dir_queue.extend(glob(dataset_path + '/*.png'))
     input_dir_queue.extend(glob(dataset_path + '/*/*.jpg'))
     input_dir_queue.extend(glob(dataset_path + '/*/*.png'))
 
@@ -35,7 +37,7 @@ def preprocess_dataset(image_dirs):
     for image_dir in image_dirs:
         try:
             image = skimage.io.imread(image_dir)
-            if image.shape[0] % 2 == 0 and image.shape[1] % 2 == 0:
+            if image.shape[0] == 1920 and image.shape[1] == 1080:
                 images.append(image)
         except:
             continue

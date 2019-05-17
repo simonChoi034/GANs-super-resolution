@@ -36,7 +36,7 @@ class Generator(tf.keras.Model):
         x = LeakyReLU()(x)
         return x
 
-    # alt
+    # alt (not using)
     def residual_block(self, input, filters, strides=1):
         residual = self.conv2d(input, filters=filters, kernel_size=1, strides=strides)
         x = self.conv2d(input, filters=filters, kernel_size=7, strides=strides)
@@ -74,4 +74,3 @@ class Discriminator(tf.keras.Model):
         x = BatchNormalization()(x)
         x = LeakyReLU()(x)
         return x
-
