@@ -7,13 +7,6 @@ from skimage.color import rgba2rgb, gray2rgb
 import matplotlib.pyplot as plt
 
 
-def expand_dims(array):
-    # batch size = 1
-    if array.ndim == 3:
-        return np.expand_dims(array, axis=0)
-    return array
-
-
 def get_file_list(dataset_path):
     input_dir_queue = []
     input_dir_queue.extend(glob(dataset_path + '/*.jpg'))
@@ -37,7 +30,7 @@ def preprocess_dataset(image_dirs):
     for image_dir in image_dirs:
         try:
             image = skimage.io.imread(image_dir)
-            if image.shape[0] == 1920 and image.shape[1] == 1080:
+            if image.shape[0] == 1080 and image.shape[1] == 1920:
                 images.append(image)
         except:
             continue
