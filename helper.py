@@ -30,16 +30,11 @@ def preprocess_dataset(image_dirs):
     for image_dir in image_dirs:
         try:
             image = skimage.io.imread(image_dir)
-            if image.shape[0] == 1080 and image.shape[1] == 1920:
-                images.append(image)
+            images.append(image2rgb(image))
         except:
-            continue
+            print("Cannot load image ", image_dir)
 
     images = np.array(images)
-
-    # transform rgba/grey-scale image to rgb image
-    for i, image in enumerate(images):
-        images[i] = image2rgb(image)
 
     # create downscaled image
     downscaled_images = []
