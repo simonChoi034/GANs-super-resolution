@@ -9,10 +9,8 @@ import matplotlib.pyplot as plt
 
 def get_file_list(dataset_path):
     input_dir_queue = []
-    input_dir_queue.extend(glob(dataset_path + '/*.jpg'))
-    input_dir_queue.extend(glob(dataset_path + '/*.png'))
-    input_dir_queue.extend(glob(dataset_path + '/*/*.jpg'))
-    input_dir_queue.extend(glob(dataset_path + '/*/*.png'))
+    input_dir_queue.extend(glob(dataset_path + '**/*.jpg', recursive=True))
+    input_dir_queue.extend(glob(dataset_path + '**/*.png', recursive=True))
 
     return np.array(input_dir_queue)
 
